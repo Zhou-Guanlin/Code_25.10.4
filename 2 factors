@@ -57,7 +57,7 @@ def plot_decision_boundary(X, y, model, file_name, xlim=None, ylim=None, predict
                linestyles=['--', '-', '--'])
     
     # Axis labels
-    plt.xlabel(r"Normalized $\mathit{E}$")
+    plt.xlabel(r"Normalized $\mathit{E}$") #example of E and μ
     plt.ylabel(r"Normalized $\mathit{μ}$")
 
     ax.xaxis.set_major_locator(plt.MaxNLocator(6))
