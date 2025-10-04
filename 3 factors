@@ -71,7 +71,7 @@ def plot_decision_boundary_pca(X, y, model, pca, file_name, xlim, ylim, predicti
 
     plt.tight_layout(pad=0.5)
 
-    plt.savefig(file_name, format='tif', bbox_inches='tight')  # 添加 bbox_inches='tight' 去除白边
+    plt.savefig(file_name, format='tif', bbox_inches='tight')  
 
     plt.show()
 
