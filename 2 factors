@@ -1,0 +1,149 @@
+import pandas as pd
+import numpy as np
+from sklearn.svm import SVC
+import matplotlib.pyplot as plt
+import os
+
+# Set global font, font size, tick size, and line width
+plt.rcParams['font.family'] = 'Arial'
+plt.rcParams['font.size'] = 48
+plt.rcParams['xtick.major.size'] = 8  
+plt.rcParams['ytick.major.size'] = 8 
+plt.rcParams['lines.linewidth'] = 2  
+plt.rcParams['axes.linewidth'] = 2  
+
+os.chdir("xxx")  # Change current working directory
+
+# Load data
+def load_data(file_name):
+    return pd.read_csv(file_name, header=None)
+
+# Train SVM model
+def train_svm(X_train, y_train):
+    model = SVC(kernel='', C=1, gamma=1)
+# kernel : type of kernel function ('linear', 'rbf', 'poly', 'sigmoid'), determines the shape of the decision boundary
+# C      : regularization parameter, larger C means less tolerance for misclassification
+# gamma  : kernel coefficient for 'rbf', 'poly', and 'sigmoid' (controls influence of single training points);
+
+    model.fit(X_train, y_train)
+    return model
+
+# Plot data points and decision boundary, and save as .tif image
+def plot_decision_boundary(X, y, model, file_name, xlim=None, ylim=None, predictions=None):
+    plt.figure(figsize=(10, 8))
+    
+    if predictions is None:
+        plt.scatter(X[:, 0], X[:, 1], c=y, cmap='bwr', alpha=0.5, edgecolor='k', s=400)
+    else:
+        correct = predictions == y
+        plt.scatter(X[correct, 0], X[correct, 1], c=y[correct], cmap='bwr', marker='o', edgecolors='k', s=400, alpha=0.5)
+        plt.scatter(X[~correct, 0], X[~correct, 1], c=y[~correct], cmap='bwr', marker='x', edgecolors='k', s=400)
+    
+
+    ax = plt.gca()
+
+    x_margin = (xlim[1] - xlim[0]) * 0.05
+    y_margin = (ylim[1] - ylim[0]) * 0.05
+    ax.set_xlim(xlim[0] - x_margin, xlim[1] + x_margin)
+    ax.set_ylim(ylim[0] - y_margin, ylim[1] + y_margin) 
+
+    xx, yy = np.meshgrid(np.linspace(xlim[0] - x_margin, xlim[1] + x_margin, 50),
+                         np.linspace(ylim[0] - y_margin, ylim[1] + y_margin, 50))
+    Z = model.decision_function(np.c_[xx.ravel(), yy.ravel()])
+    Z = Z.reshape(xx.shape)
+    
+    # Plot decision boundary and margins
+    ax.contour(xx, yy, Z, colors='k', levels=[-1, 0, 1], alpha=0.5,
+               linestyles=['--', '-', '--'])
+    
+    # Axis labels
+    plt.xlabel(r"Normalized $\mathit{E}$")
+    plt.ylabel(r"Normalized $\mathit{μ}$")
+
+    ax.xaxis.set_major_locator(plt.MaxNLocator(6))
+    ax.yaxis.set_major_locator(plt.MaxNLocator(6))
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda val, pos: f'{val:.1f}'))
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda val, pos: f'{val:.1f}'))
+
+    plt.tight_layout(pad=0.5)
+
+    plt.savefig(file_name, format='tif', bbox_inches='tight') 
+
+    plt.show()
+
+# Count number of class 1 and class 2 samples on each side of decision boundary
+def count_classes_sides(X, y, model, dataset_name):
+    decision_values = model.decision_function(X)
+    left_side = decision_values < 0  # Left side of boundary
+    right_side = decision_values >= 0  # Right side of boundary
+
+    # Count on the left side
+    left_class_count = np.unique(y[left_side], return_counts=True)
+    left_class_count_dict = dict(zip(left_class_count[0], left_class_count[1]))
+    
+    # Count on the right side
+    right_class_count = np.unique(y[right_side], return_counts=True)
+    right_class_count_dict = dict(zip(right_class_count[0], right_class_count[1]))
+    
+    print(f'In {dataset_name}:')
+    print(f'Left side of decision boundary (below the line):')
+    print(f'Class 1 count: {left_class_count_dict.get(1, 0)}')
+    print(f'Class 2 count: {left_class_count_dict.get(2, 0)}')
+    print('----------------------------')
+    
+    print(f'Right side of decision boundary (above the line):')
+    print(f'Class 1 count: {right_class_count_dict.get(1, 0)}')
+    print(f'Class 2 count: {right_class_count_dict.get(2, 0)}')
+    print('----------------------------')
+
+# Main function
+def main():
+    train_csv = 'xxx.csv'
+    test_csv = 'xxx.csv'
+    
+    data_train = load_data(train_csv)
+    data_test = load_data(test_csv)
+
+    X_train = data_train.iloc[:, :2].values
+    y_train = data_train.iloc[:, 2].values
+
+    X_test = data_test.iloc[:, :2].values
+    y_test = data_test.iloc[:, 2].values
+    
+    # Normalize each dataset using the mean of the first 50% of rows
+    half_train = X_train.shape[0] // 2
+    mean_train_first_half = X_train[:half_train].mean(axis=0)
+    X_train = X_train / mean_train_first_half
+
+    half_test = X_test.shape[0] // 2
+    mean_test_first_half = X_test[:half_test].mean(axis=0)
+    X_test = X_test / mean_test_first_half
+
+    # Train model
+    model = train_svm(X_train, y_train)
+    
+    # Count class distribution on both sides of decision boundary (training set)
+    count_classes_sides(X_train, y_train, model, 'Training Set')
+    
+    # Determine axis limits from both training and testing sets
+    combined_x = np.concatenate([X_train[:, 0], X_test[:, 0]])
+    combined_y = np.concatenate([X_train[:, 1], X_test[:, 1]])
+    xlim = [combined_x.min(), combined_x.max()]
+    ylim = [combined_y.min(), combined_y.max()]
+    
+    # Save training decision boundary figure
+    train_tif = os.path.splitext(train_csv)[0] + '.tif'
+    plot_decision_boundary(X_train, y_train, model, train_tif, xlim, ylim)
+    
+    # Predict test data
+    test_predictions = model.predict(X_test)
+    
+    # Count class distribution on both sides of decision boundary (test set)
+    count_classes_sides(X_test, y_test, model, 'Test Set')
+
+    # Save test decision boundary figure
+    test_tif = os.path.splitext(test_csv)[0] + '.tif'
+    plot_decision_boundary(X_test, y_test, model, test_tif, xlim, ylim, predictions=test_predictions)
+
+if __name__ == '__main__':
+    main()
